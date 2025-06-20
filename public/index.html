@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prescription Request Simulator</title>
+  <title>eRx Simulator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -49,7 +49,7 @@
   </style>
 </head>
 <body>
-  <h1>Prescription Request Simulator</h1>
+  <h1>eRx Simulator</h1>
   <div class="container">
     <form id="rxForm">
       <h2>Doctor's Prescription Entry</h2>
@@ -61,21 +61,30 @@
       <label>Date of Birth</label>
       <input type="date" name="dob" required>
 
+      <label>Sex</label>
+      <input name="patientSex">
+
       <label>Address</label>
       <input name="patientAddress">
+
+      <label>Phone Number</label>
+      <input type="number" name="patientPhoneNumber">      
 
       <h3>Prescriber Information</h3>
       <label>Doctor Name</label>
       <input name="doctorName" required>
+
+      <label>Clinic Address</label>
+      <input name="clinicAddress">   
+      
+      <label>Clinic Phone Number</label>
+      <input type="number" name="clinicPhoneNumber">        
 
       <label>NPI Number</label>
       <input name="npi">
 
       <label>DEA Number</label>
       <input name="dea">
-
-      <label>Clinic Contact Info</label>
-      <input name="clinicContact">
 
       <h3>Prescription Details</h3>
       <label>Drug Name</label>
@@ -102,15 +111,6 @@
         <option>50 mg</option>
       </select>
 
-      <label>Dosage Form</label>
-      <select name="form">
-        <option>Tablet</option>
-        <option>Capsule</option>
-        <option>Suspension</option>
-        <option>Injection</option>
-        <option>Topical Cream</option>
-      </select>
-
       <label>Route</label>
       <select name="route">
         <option>Oral</option>
@@ -120,11 +120,20 @@
         <option>Subcutaneous</option>
       </select>
 
+      <label>Dosage Form</label>
+      <select name="form">
+        <option>Tablet</option>
+        <option>Capsule</option>
+        <option>Suspension</option>
+        <option>Injection</option>
+        <option>Topical Cream</option>
+      </select>
+
+      <label>Date Written</label>
+      <input type="date" id="dateWritten" required>
+
       <label>Quantity</label>
       <input name="quantity" required>
-
-      <label>Directions (Sig)</label>
-      <textarea name="directions">Take 1 tablet by mouth twice daily</textarea>
 
       <label>Refills</label>
       <select name="refills">
@@ -135,6 +144,22 @@
         <option>5</option>
         <option>PRN</option>
       </select>
+
+      <label>Days Supply</label>
+      <input type="number" name="daysSupply">   
+      
+      <label>DAW</label>
+      <select name="daw">
+        <option>0 No product selection indicated</option>
+        <option>1 Substitution nottallowed by prescriber</option>
+        <option>2 Substitution allowed, but the patient requested the brand-name product</option>
+        <option>3 Substitution allowed, but the pharmacist chose the brand-name product</option>
+        <option>4 Substitution allowed, but the generic drug is not in stock</option>
+        <option>5 Substitution allowed, but the brand-name drug is dispensed as a generic</option>
+      </select>
+
+      <label>Directions (Sig)</label>
+      <textarea name="directions">Take 1 tablet by mouth twice daily</textarea>
 
       <label>Additional Notes</label>
       <textarea name="notes"></textarea>
@@ -154,24 +179,47 @@
       e.preventDefault();
       const data = new FormData(e.target);
       const dawChecked = data.get('daw') === 'true';
-      const output = `
---- PRESCRIPTION ORDER ---
-Patient: ${data.get('patientName')} (DOB: ${data.get('dob')})
-Address: ${data.get('patientAddress')}
+const output = `
+New Rx from PPI
+${data.get('patientName').toUpperCase()}
+DOB: ${data.get('dob')}            ${data.get('patientAddress')}
+Sex: ${data.get('patientSex')}                     Ph: ${data.get('patientPhoneNumber')}
 
-Prescriber: Dr. ${data.get('doctorName')}
-NPI: ${data.get('npi')}   DEA: ${data.get('dea')}
-Clinic Contact: ${data.get('clinicContact')}
+--------------------------------------------------------------------------------
+Written: ${data.get('drug')} ${data.get('strength')} ${data.get('form')}
 
-Medication: ${data.get('drug')} ${data.get('strength')}
-Form: ${data.get('form')}  Route: ${data.get('route')}
-Quantity: ${data.get('quantity')}
-SIG: ${data.get('directions')}
+--------------------------------------------------------------------------------
+Date Written: ${data.get('dateWritten')}
+Qty: ${data.get('quantity')}   Tablet     Refills: ${data.get('refills')}   Days Supply: ${data.get('daysSupply')}
+DAW: ${data.get('daw')}  No Product Selection Indicated.
+--------------------------------------------------------------------------------
+${data.get('directions')}
 
-Refills: ${data.get('refills')}   ${dawChecked ? 'DAW: Yes' : ''}
-Notes: ${data.get('notes')}
-Date Issued: ${new Date().toLocaleDateString()}
----------------------------
+Notes from Prescriber:
+${data.get('notes')}
+
+${data.get('doctorName').toUpperCase()}
+${data.get('clinicAddress')}
+${data.get('clinicPhoneNumber')}
+
+DEANumber: ${data.get('dea')}
+NPI: ${data.get('npi')}
+
+Electronically Signed By (SPI): 66406787271005
+--------------------------------------------------------------------------------
+
+
+Diagnosis Code:
+Electronically Transmitted To:
+Lee's Market Place - Richmond  #829636
+185 N 200 W
+Richmond, UT 84333
+Prescriber Order #: CERN26831433215.66406787271005
+
+NCPDP: 4615499
+Phone: (435) 915-5133
+Signed Date: ${data.get('dateWritten')}
+
 `;
       document.getElementById('rxOutput').textContent = output;
     });
@@ -193,6 +241,39 @@ Date Issued: ${new Date().toLocaleDateString()}
       document.getElementById('rxForm').reset();
       document.getElementById('rxOutput').textContent = '';
     }
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById("dateWritten").value = today;
+      
+    // Remove this section later for temp data//
+      window.onload = function () {
+    const form = document.forms['rxForm'];
+    form['patientName'].value = 'KATIE MAUGHAN';
+    form['dob'].value = '1985-07-22';
+    form['patientSex'].value = 'F';
+    form['patientAddress'].value = '568 N 540 E\nSMITHFIELD, UT 843355504';
+    form['patientPhoneNumber'].value = '4357576306';
+
+    form['doctorName'].value = 'Brian Carlson';
+    form['clinicAddress'].value = '412 N 200 E\nLogan, UT 84321';
+    form['clinicPhoneNumber'].value = '4357132800';
+    form['npi'].value = '1760498687';
+    form['dea'].value = 'BC8435732';
+
+    form['drug'].value = 'Amoxicillin';  // or customize to 'Valtrex' if you add that as an option
+    form['strength'].value = '500 mg';   // or '1 g' if you add it to the select options
+    form['route'].value = 'Oral';
+    form['form'].value = 'Tablet';
+    form['dateWritten'].value = '2024-12-19';
+    form['quantity'].value = '28';
+    form['refills'].value = '1';
+    form['daysSupply'].value = '5'; // left empty intentionally
+    form['daw'].value = '0 No product selection indicated';
+    form['directions'].value = '2 TABS ORAL BID, INSTR: X 2 DOSES AT FIRST SIGN OF COLD SORE';
+    form['notes'].value = 'This patient gets cold sores frequently.';
+  }
+  //End of temp data section//
+
+
     </script>
 </body>
 </html>
