@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prescription Request Simulator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+    }
+    form, .output {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      flex: 1 1 45%;
+    }
+    label {
+      display: block;
+      margin: 10px 0 4px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    textarea {
+      height: 60px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .output pre {
+      background: #eee;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Prescription Request Simulator</h1>
+  <div class="container">
+    <form id="rxForm">
+      <h2>Doctor's Prescription Entry</h2>
+
+      <h3>Patient Information</h3>
+      <label>Full Name</label>
+      <input name="patientName" required>
+
+      <label>Date of Birth</label>
+      <input type="date" name="dob" required>
+
+      <label>Address</label>
+      <input name="patientAddress">
+
+      <h3>Prescriber Information</h3>
+      <label>Doctor Name</label>
+      <input name="doctorName" required>
+
+      <label>NPI Number</label>
+      <input name="npi">
+
+      <label>DEA Number</label>
+      <input name="dea">
+
+      <label>Clinic Contact Info</label>
+      <input name="clinicContact">
+
+      <h3>Prescription Details</h3>
+      <label>Drug Name</label>
+      <select name="drug">
+        <option>Amoxicillin</option>
+        <option>Ibuprofen</option>
+        <option>Atorvastatin</option>
+        <option>Metformin</option>
+        <option>Lisinopril</option>
+        <option>Omeprazole</option>
+        <option>Azithromycin</option>
+        <option>Hydrochlorothiazide</option>
+        <option>Levothyroxine</option>
+        <option>Simvastatin</option>
+      </select>
+
+      <label>Strength</label>
+      <select name="strength">
+        <option>100 mg</option>
+        <option>250 mg</option>
+        <option>500 mg</option>
+        <option>10 mg</option>
+        <option>20 mg</option>
+        <option>50 mg</option>
+      </select>
+
+      <label>Dosage Form</label>
+      <select name="form">
+        <option>Tablet</option>
+        <option>Capsule</option>
+        <option>Suspension</option>
+        <option>Injection</option>
+        <option>Topical Cream</option>
+      </select>
+
+      <label>Route</label>
+      <select name="route">
+        <option>Oral</option>
+        <option>Topical</option>
+        <option>Intravenous</option>
+        <option>Intramuscular</option>
+        <option>Subcutaneous</option>
+      </select>
+
+      <label>Quantity</label>
+      <input name="quantity" required>
+
+      <label>Directions (Sig)</label>
+      <textarea name="directions">Take 1 tablet by mouth twice daily</textarea>
+
+      <label>Refills</label>
+      <select name="refills">
+        <option>0</option>
+        <option>1</option>
+        <option>2</option>
+        <option>3</option>
+        <option>5</option>
+        <option>PRN</option>
+      </select>
+
+      <label>Additional Notes</label>
+      <textarea name="notes"></textarea>
+
+      <button type="submit">Submit Prescription</button>
+    </form>
+
+    <div class="output">
+      <h2>Pharmacist View</h2>
+      <pre id="rxOutput">Submit the form to view formatted prescription.</pre>
+        <button class="print-btn" onclick="downloadPDF()">Download PDF</button>
+        <button class="print-btn" onclick="clearAll()">Clear All</button>
+  </div>
+
+  <script>
+    document.getElementById('rxForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const data = new FormData(e.target);
+      const dawChecked = data.get('daw') === 'true';
+      const output = `
+--- PRESCRIPTION ORDER ---
+Patient: ${data.get('patientName')} (DOB: ${data.get('dob')})
+Address: ${data.get('patientAddress')}
+
+Prescriber: Dr. ${data.get('doctorName')}
+NPI: ${data.get('npi')}   DEA: ${data.get('dea')}
+Clinic Contact: ${data.get('clinicContact')}
+
+Medication: ${data.get('drug')} ${data.get('strength')}
+Form: ${data.get('form')}  Route: ${data.get('route')}
+Quantity: ${data.get('quantity')}
+SIG: ${data.get('directions')}
+
+Refills: ${data.get('refills')}   ${dawChecked ? 'DAW: Yes' : ''}
+Notes: ${data.get('notes')}
+Date Issued: ${new Date().toLocaleDateString()}
+---------------------------
+`;
+      document.getElementById('rxOutput').textContent = output;
+    });
+  </script>
+
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    async function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const content = document.getElementById('rxOutput').textContent;
+      const lines = doc.splitTextToSize(content, 180);
+      doc.setFont("Courier", "normal");
+      doc.setFontSize(10);
+      doc.text(lines, 10, 20);
+      doc.save("prescription.pdf");
+    }
+        function clearAll() {
+      document.getElementById('rxForm').reset();
+      document.getElementById('rxOutput').textContent = '';
+    }
+    </script>
+</body>
+</html>
