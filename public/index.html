@@ -130,7 +130,7 @@
       </select>
 
       <label>Date Written</label>
-      <input type="date" id="dateWritten" required>
+      <input type="date" name="dateWritten" required>
 
       <label>Quantity</label>
       <input name="quantity" required>
@@ -241,9 +241,7 @@ Signed Date: ${data.get('dateWritten')}
       document.getElementById('rxForm').reset();
       document.getElementById('rxOutput').textContent = '';
     }
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById("dateWritten").value = today;
-      
+    
     // Remove this section later for temp data//
       window.onload = function () {
     const form = document.forms['rxForm'];
@@ -263,7 +261,7 @@ Signed Date: ${data.get('dateWritten')}
     form['strength'].value = '500 mg';   // or '1 g' if you add it to the select options
     form['route'].value = 'Oral';
     form['form'].value = 'Tablet';
-    form['dateWritten'].value = '2024-12-19';
+    form['dateWritten'].value = new Date().toISOString().split('T')[0];
     form['quantity'].value = '28';
     form['refills'].value = '1';
     form['daysSupply'].value = '5'; // left empty intentionally
