@@ -70,8 +70,9 @@ router.get('/api/forms/:_id', async (req, res) => {
 
 // In rx.js
 router.post('/api/forms', async (req, res) => {
+  let update = JSON.parse(req.body.update);
   try {
-    const form = new RxForm(req.body); // assumes body matches schema shape
+    const form = new RxForm(update); // assumes body matches schema shape
     await form.save();
     res.status(201).json(form);
   } catch (err) {

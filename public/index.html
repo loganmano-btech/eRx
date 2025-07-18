@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>eRx Simulator</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -164,7 +165,8 @@
       <label>Additional Notes</label>
       <textarea name="notes"></textarea>
 
-      <button type="submit">Submit Prescription</button>
+      <button id="submit-prescription-btn">Submit Prescription</button>
+      <button id="save-prescription-btn">Save Prescription</button>
     </form>
 
     <div class="output">
@@ -175,9 +177,51 @@
   </div>
 
   <script>
-    document.getElementById('rxForm').addEventListener('submit', function(e) {
+    const form = document.getElementById('rxForm');
+    const output = document.getElementById('rxOutput');
+    document.getElementById('save-prescription-btn').addEventListener('click', async (e) => {
       e.preventDefault();
-      const data = new FormData(e.target);
+       const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries()); // Convert to plain object
+      let patient = {};
+      patient.name = data.patientName;
+      patient.dob = data.dob;
+      patient.sex = data.patientSex;
+      patient.address = data.patientAddress;
+      patient.phoneNumber = data.patientPhoneNumber;
+
+
+      let doctor = {};
+      doctor.name = data.doctorName;
+      doctor.clinicAddress = data.clinicAddress;
+      doctor.clinicPhoneNumber = data.clinicPhoneNumber;
+      doctor.npi = data.npi;
+      doctor.dea = data.dea;
+
+      let prescription = {};
+      prescription.drug = data.drug;
+      prescription.strength = data.strength;
+      prescription.route = data.route;
+      prescription.form = data.form;
+      prescription.dateWritten = data.dateWritten;
+      prescription.quantity = data.quantity;
+      prescription.refills = data.refills;
+      prescription.daysSupply = data.daysSupply;
+      prescription.daw = data.daw;
+      prescription.directions = data.directions;
+      prescription.notes = data.notes;
+
+      $.post('https://erx.bridgetools.dev/api/forms', {
+        update: JSON.stringify({
+          patient: patient,
+          doctor: doctor,
+          prescription: prescription
+        })
+      });
+    });
+    document.getElementById('submit-prescription-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+       const data = new FormData(form);
       const dawChecked = data.get('daw') === 'true';
 const output = `
 New Rx from PPI
