@@ -37,6 +37,7 @@ const rxFormSchema = new mongoose.Schema({
   patient: { type: patientSchema, required: true },
   doctor: { type: doctorSchema, required: true },
   prescription: { type: prescriptionSchema, required: true },
+  hidden: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -70,13 +71,29 @@ router.get('/api/forms/:_id', async (req, res) => {
 
 // In rx.js
 router.post('/api/forms', async (req, res) => {
-  let update = JSON.parse(req.body.update);
+  let updates = JSON.parse(req.body.update);
   try {
-    const form = new RxForm(update); // assumes body matches schema shape
+    const form = new RxForm(updates); // assumes body matches schema shape
     await form.save();
     res.status(201).json(form);
   } catch (err) {
     console.error('Error creating form:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// In rx.js
+router.put('/api/forms/:_id', async (req, res) => {
+  let formId = req.params._id;
+  let updates = JSON.parse(req.body.update);
+  const form = (await RxForm.findById(req.params._id));
+  try {
+    form.updateOne(updates);
+
+    await form.save();
+    res.status(201).json(form);
+  } catch (err) {
+    console.error('Error updating form:', err);
     res.status(400).json({ error: err.message });
   }
 });
