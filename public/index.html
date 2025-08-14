@@ -92,32 +92,13 @@
       <input name="drug">
 
       <label>Strength</label>
-      <select name="strength">
-        <option>100 mg</option>
-        <option>250 mg</option>
-        <option>500 mg</option>
-        <option>10 mg</option>
-        <option>20 mg</option>
-        <option>50 mg</option>
-      </select>
+      <input name="strength">
 
       <label>Route</label>
-      <select name="route">
-        <option>Oral</option>
-        <option>Topical</option>
-        <option>Intravenous</option>
-        <option>Intramuscular</option>
-        <option>Subcutaneous</option>
-      </select>
+      <input name="route">
 
       <label>Dosage Form</label>
-      <select name="form">
-        <option>Tablet</option>
-        <option>Capsule</option>
-        <option>Suspension</option>
-        <option>Injection</option>
-        <option>Topical Cream</option>
-      </select>
+      <input name="form">
 
       <label>Date Written</label>
       <input type="date" name="dateWritten" required>
@@ -126,14 +107,7 @@
       <input name="quantity" required>
 
       <label>Refills</label>
-      <select name="refills">
-        <option>0</option>
-        <option>1</option>
-        <option>2</option>
-        <option>3</option>
-        <option>5</option>
-        <option>PRN</option>
-      </select>
+      <input name="refills">
 
       <label>Days Supply</label>
       <input type="number" name="daysSupply">   
@@ -155,7 +129,6 @@
       <textarea name="notes"></textarea>
 
       <button id="submit-prescription-btn">Submit Prescription</button>
-      <button id="save-prescription-btn">Save Prescription</button>
     </form>
 
     <div class="output">
@@ -163,6 +136,7 @@
       <pre id="rxOutput">Submit the form to view formatted prescription.</pre>
         <button class="print-btn" onclick="downloadPDF()">Download PDF</button>
         <button class="print-btn" onclick="clearAll()">Clear All</button>
+        <button id="save-prescription-btn">Save Prescription</button>
   </div>
 
   <script>
