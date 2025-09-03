@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>eRx Simulator</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    :root { --card: #fff; --muted:#f3f4f6; }
+    body { font-family: Arial, sans-serif; margin: 20px; background:#f9f9f9; }
+    /* layout */
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+    .right-panel { align-self: start; }
+
+    /* cards, inputs, misc */
+    .card { background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,.1); }
+    label { display:block; margin:10px 0 4px; }
+    input, select, textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; }
+    textarea { height:60px; }
+    .btn-row { margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; }
+    button { padding:10px 14px; font-size:14px; cursor:pointer; border-radius:8px; border:1px solid #ddd; background:#fff; }
+    button.primary { background:#111; color:#fff; border-color:#111; }
+    .hidden { display:none !important; }
+
+    /* tabs */
+    .tabs { display:flex; gap:8px; margin: 0 0 12px; }
+    .tab-btn { border:1px solid #ddd; background:#fff; padding:8px 12px; border-radius:8px; cursor:pointer; }
+    .tab-btn.active { background:#111; color:#fff; border-color:#111; }
+
+    /* output + saved */
+    .output pre { background:#eee; padding:10px; white-space:pre-wrap; }
+    .cards { display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+    .pill { background:#eef2ff; padding:2px 8px; border-radius:999px; font-size:12px; display:inline-block; }
+
+    /* saved item card */
+    .card-item { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+    .card-item h4 { margin:0; font-size:16px; }
+    .meta { color:#666; font-size:13px; }
+    .actions { display:flex; gap:8px; }
+    .iconbtn { display:inline-flex; align-items:center; gap:6px; border:1px solid #ddd; border-radius:8px; padding:6px 10px; background:#fff; cursor:pointer; }
+    .icon { width:14px; height:14px; display:inline-block; }
+  </style>
+</head>
+<body>
+  <h1>eRx Simulator</h1>
+
+  <div class="container">
+    <!-- LEFT: Doctor Entry -->
+    <form id="rxForm" class="card">
+      <h2>Doctor's Prescription Entry</h2>
+
+      <h3>Patient Information</h3>
+      <label>Full Name</label><input name="patientName" required>
+      <label>Date of Birth</label><input type="date" name="dob" required>
+      <label>Sex</label><input name="patientSex" placeholder="M / F / O">
+      <label>Address</label><input name="patientAddress">
+      <label>Phone Number</label><input type="tel" name="patientPhoneNumber">
+
+      <h3>Prescriber Information</h3>
+      <label>Doctor Name</label><input name="doctorName" required>
+      <label>Clinic Address</label><input name="clinicAddress">
+      <label>Clinic Phone Number</label><input type="tel" name="clinicPhoneNumber">
+      <label>NPI Number</label><input name="npi">
+      <label>DEA Number</label><input name="dea">
+
+      <h3>Prescription Details</h3>
+      <label>Drug Name</label><input name="drug">
+      <label>Strength</label><input name="strength">
+      <label>Route</label><input name="route">
+      <label>Dosage Form</label><input name="form">
+      <label>Date Written</label><input type="date" name="dateWritten" required>
+      <label>Quantity</label><input name="quantity" required>
+      <label>Refills</label><input name="refills">
+      <label>Days Supply</label><input type="number" name="daysSupply">
+      <label>DAW</label>
+      <select name="daw">
+        <option>0 No product selection indicated</option>
+        <option>1 Substitution nottallowed by prescriber</option>
+        <option>2 Substitution allowed, but the patient requested the brand-name product</option>
+        <option>3 Substitution allowed, but the pharmacist chose the brand-name product</option>
+        <option>4 Substitution allowed, but the generic drug is not in stock</option>
+        <option>5 Substitution allowed, but the brand-name drug is dispensed as a generic</option>
+      </select>
+      <label>Directions (Sig)</label><textarea name="directions">Take 1 tablet by mouth twice daily</textarea>
+      <label>Additional Notes</label><textarea name="notes"></textarea>
+
+      <div class="btn-row">
+        <button id="submit-prescription-btn" class="primary">Submit Prescription</button>
+        <button class="print-btn" type="button" id="clear-all-btn">Clear All</button>
+      </div>
+    </form>
+
+    <!-- RIGHT: Tabs above the card -->
+    <section class="right-panel">
+      <div class="tabs">
+        <button id="tab-prescription" class="tab-btn active">Pharmacy View</button>
+        <button id="tab-saved" class="tab-btn">Saved</button>
+      </div>
+
+      <!-- Pharmacy View (tab page 1) -->
+      <div id="panel-prescription" class="">
+        <div class="output card">
+          <h2>Pharmacist View</h2>
+          <pre id="rxOutput">Submit the form to view formatted prescription.</pre>
+          <div id="rx-actions" class="btn-row hidden">
+            <button id="save-prescription-btn">Save</button>
+            <button id="download-prescription-btn" type="button">Download PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Saved (tab page 2) -->
+      <div id="panel-saved" class="hidden">
+        <div class="saved card">
+          <h2>Saved Prescriptions</h2>
+          <div id="saved-cards" class="cards"></div>
+          <div id="empty-state" class="pill hidden">No saved prescriptions yet.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    // ====== SIMPLE ICONS (inline) ======
+    const ICONS = {
+      download: '<span class="icon">⬇️</span>',
+      edit: '<span class="icon">✏️</span>',
+      delete: '<span class="icon">🗑️</span>'
+    };
+
+    // ====== STATE ======
+    let currentEditId = null; // when editing an existing banked doc
+
+    // ====== HELPERS ======
+    function collectFormDataObj() {
+      const form = document.getElementById('rxForm');
+      const data = new FormData(form);
+      const patient = {
+        name: data.get('patientName') || '',
+        dob: data.get('dob') || '',
+        sex: data.get('patientSex') || '',
+        address: data.get('patientAddress') || '',
+        phoneNumber: data.get('patientPhoneNumber') || ''
+      };
+      const doctor = {
+        name: data.get('doctorName') || '',
+        clinicAddress: data.get('clinicAddress') || '',
+        clinicPhoneNumber: data.get('clinicPhoneNumber') || '',
+        npi: data.get('npi') || '',
+        dea: data.get('dea') || ''
+      };
+      const prescription = {
+        drug: data.get('drug') || '',
+        strength: data.get('strength') || '',
+        route: data.get('route') || '',
+        form: data.get('form') || '',
+        dateWritten: data.get('dateWritten') || '',
+        quantity: Number(data.get('quantity') || 0),
+        refills: Number(data.get('refills') || 0),
+        daysSupply: data.get('daysSupply') ? Number(data.get('daysSupply')) : undefined,
+        daw: data.get('daw') || '',
+        directions: data.get('directions') || '',
+        notes: data.get('notes') || ''
+      };
+      return { patient, doctor, prescription };
+    }
+
+    function populateFormFromDoc(doc) {
+      const f = document.forms['rxForm'];
+      // patient
+      f['patientName'].value = doc.patient?.name || '';
+      f['dob'].value = doc.patient?.dob?.slice?.(0,10) || '';
+      f['patientSex'].value = doc.patient?.sex || '';
+      f['patientAddress'].value = doc.patient?.address || '';
+      f['patientPhoneNumber'].value = doc.patient?.phoneNumber || '';
+      // doctor
+      f['doctorName'].value = doc.doctor?.name || '';
+      f['clinicAddress'].value = doc.doctor?.clinicAddress || '';
+      f['clinicPhoneNumber'].value = doc.doctor?.clinicPhoneNumber || '';
+      f['npi'].value = doc.doctor?.npi || '';
+      f['dea'].value = doc.doctor?.dea || '';
+      // rx
+      f['drug'].value = doc.prescription?.drug || '';
+      f['strength'].value = doc.prescription?.strength || '';
+      f['route'].value = doc.prescription?.route || '';
+      f['form'].value = doc.prescription?.form || '';
+      f['dateWritten'].value = doc.prescription?.dateWritten?.slice?.(0,10) || '';
+      f['quantity'].value = doc.prescription?.quantity ?? '';
+      f['refills'].value = doc.prescription?.refills ?? '';
+      f['daysSupply'].value = doc.prescription?.daysSupply ?? '';
+      f['daw'].value = doc.prescription?.daw || '';
+      f['directions'].value = doc.prescription?.directions || '';
+      f['notes'].value = doc.prescription?.notes || '';
+    }
+
+    function rxTextFromForm() {
+      const d = new FormData(document.getElementById('rxForm'));
+      return `
+New Rx from PPI
+${(d.get('patientName')||'').toUpperCase()}
+DOB: ${d.get('dob')||''}            ${d.get('patientAddress')||''}
+Sex: ${d.get('patientSex')||''}                     Ph: ${d.get('patientPhoneNumber')||''}
+
+--------------------------------------------------------------------------------
+Written: ${d.get('drug')||''} ${d.get('strength')||''} ${d.get('form')||''}
+
+--------------------------------------------------------------------------------
+Date Written: ${d.get('dateWritten')||''}
+Qty: ${d.get('quantity')||''}   Tablet     Refills: ${d.get('refills')||''}   Days Supply: ${d.get('daysSupply')||''}
+DAW: ${d.get('daw')||''}  No Product Selection Indicated.
+--------------------------------------------------------------------------------
+${d.get('directions')||''}
+
+Notes from Prescriber:
+${d.get('notes')||''}
+
+${(d.get('doctorName')||'').toUpperCase()}
+${d.get('clinicAddress')||''}
+${d.get('clinicPhoneNumber')||''}
+
+DEANumber: ${d.get('dea')||''}
+NPI: ${d.get('npi')||''}
+
+Electronically Signed By (SPI): 66406787271005
+--------------------------------------------------------------------------------
+
+
+Diagnosis Code:
+Electronically Transmitted To:
+Bridgerland Pharmacy-Logan #3160
+1301 N 600 W
+Logan, UT 84321
+Prescriber Order #: CERN26831433215.66406787271005
+
+NCPDP: 6871987
+Phone: 435-750-3149
+Signed Date: ${d.get('dateWritten')||''}
+`;
+    }
+
+    function rxTextFromDoc(doc) {
+      const p = doc.patient || {};
+      const d = doc.doctor || {};
+      const r = doc.prescription || {};
+      return `
+New Rx from PPI
+${(p.name||'').toUpperCase()}
+DOB: ${(p.dob||'').slice(0,10)}            ${p.address||''}
+Sex: ${p.sex||''}                     Ph: ${p.phoneNumber||''}
+
+--------------------------------------------------------------------------------
+Written: ${r.drug||''} ${r.strength||''} ${r.form||''}
+
+--------------------------------------------------------------------------------
+Date Written: ${(r.dateWritten||'').slice(0,10)}
+Qty: ${r.quantity ?? ''}   Tablet     Refills: ${r.refills ?? ''}   Days Supply: ${r.daysSupply ?? ''}
+DAW: ${r.daw||''}  No Product Selection Indicated.
+--------------------------------------------------------------------------------
+${r.directions||''}
+
+Notes from Prescriber:
+${r.notes||''}
+
+${(d.name||'').toUpperCase()}
+${d.clinicAddress||''}
+${d.clinicPhoneNumber||''}
+
+DEANumber: ${d.dea||''}
+NPI: ${d.npi||''}
+
+Electronically Signed By (SPI): 66406787271005
+--------------------------------------------------------------------------------
+
+
+Diagnosis Code:
+Electronically Transmitted To:
+Bridgerland Pharmacy-Logan #3160
+1301 N 600 W
+Logan, UT 84321
+Prescriber Order #: CERN26831433215.66406787271005
+
+NCPDP: 6871987
+Phone: 435-750-3149
+Signed Date: ${(r.dateWritten||'').slice(0,10)}
+`;
+    }
+
+    function downloadPDF(textOverride) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const content = textOverride || document.getElementById('rxOutput').textContent;
+      const lines = doc.splitTextToSize(content, 180);
+      doc.setFont("Courier", "normal");
+      doc.setFontSize(10);
+      doc.text(lines, 10, 20);
+      doc.save("prescription.pdf");
+    }
+
+    function showRxActions(show) {
+      document.getElementById('rx-actions').classList.toggle('hidden', !show);
+    }
+
+    function clearAll() {
+      document.getElementById('rxForm').reset();
+      document.getElementById('rxOutput').textContent = '';
+      currentEditId = null;
+      showRxActions(false);
+    }
+
+    // ====== TABS ======
+    const tabPrescription = document.getElementById('tab-prescription');
+    const tabSaved = document.getElementById('tab-saved');
+    const panelPrescription = document.getElementById('panel-prescription');
+    const panelSaved = document.getElementById('panel-saved');
+
+    function setTab(which) {
+      const isRx = which === 'rx';
+      tabPrescription.classList.toggle('active', isRx);
+      tabSaved.classList.toggle('active', !isRx);
+      panelPrescription.classList.toggle('hidden', !isRx);
+      panelSaved.classList.toggle('hidden', isRx);
+      if (!isRx) loadSaved();
+    }
+
+    tabPrescription.addEventListener('click', () => setTab('rx'));
+    tabSaved.addEventListener('click', () => setTab('saved'));
+
+    // ====== FORM ACTIONS ======
+    document.getElementById('submit-prescription-btn').addEventListener('click', (e) => {
+      e.preventDefault();
+      const txt = rxTextFromForm();
+      document.getElementById('rxOutput').textContent = txt;
+      showRxActions(!!txt.trim());
+      setTab('rx');
+    });
+
+    document.getElementById('download-prescription-btn').addEventListener('click', () => {
+      const txt = document.getElementById('rxOutput').textContent;
+      if (txt.trim()) downloadPDF(txt);
+    });
+
+    document.getElementById('save-prescription-btn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const payload = collectFormDataObj();
+      try {
+        if (currentEditId) {
+          const choice = window.confirm('Update the existing prescription? Click "OK" to Update, "Cancel" to Save as New.');
+          if (choice) {
+            await $.ajax({
+              url: `/api/forms/${currentEditId}`,
+              method: 'PUT',
+              data: { update: JSON.stringify(payload) }
+            });
+          } else {
+            await $.post('/api/forms', { update: JSON.stringify(payload) });
+            currentEditId = null;
+          }
+        } else {
+          await $.post('/api/forms', { update: JSON.stringify(payload) });
+        }
+        alert('Saved!');
+        setTab('saved');
+      } catch (err) {
+        console.error(err);
+        alert('Save failed.');
+      }
+    });
+
+    document.getElementById('clear-all-btn').addEventListener('click', clearAll);
+
+    // ====== SAVED LIST ======
+    async function loadSaved() {
+      try {
+        const items = await $.getJSON('/api/forms');
+        renderSaved(items);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderSaved(items) {
+      const cards = document.getElementById('saved-cards');
+      const empty = document.getElementById('empty-state');
+      cards.innerHTML = '';
+      if (!items || items.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      items.forEach((it) => {
+        const drug = it?.prescription?.drug || '(No drug)';
+        const strength = it?.prescription?.strength || '';
+        const form = it?.prescription?.form || '';
+        const date = it?.prescription?.dateWritten?.slice?.(0,10) || '';
+        const el = document.createElement('div');
+        el.className = 'card-item';
+        el.innerHTML = `
+          <div>
+            <h4>${drug} ${strength}</h4>
+            <div class="meta">${form} • ${date}</div>
+          </div>
+          <div class="actions">
+            <button class="iconbtn" data-action="download" data-id="${it._id}">${ICONS.download} Download</button>
+            <button class="iconbtn" data-action="edit" data-id="${it._id}">${ICONS.edit} Edit</button>
+            <button class="iconbtn" data-action="delete" data-id="${it._id}">${ICONS.delete} Delete</button>
+          </div>
+        `;
+        cards.appendChild(el);
+      });
+
+      // wire actions
+      cards.querySelectorAll('.iconbtn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.currentTarget.getAttribute('data-id');
+          const action = e.currentTarget.getAttribute('data-action');
+          if (action === 'delete') {
+            if (confirm('Delete this prescription?')) {
+              try {
+                await $.ajax({ url: `/api/forms/${id}`, method: 'DELETE' });
+                loadSaved();
+              } catch (err) {
+                console.error(err);
+                alert('Delete failed.');
+              }
+            }
+          } else if (action === 'edit') {
+            try {
+              const doc = await $.getJSON(`/api/forms/${id}`);
+              currentEditId = id;
+              populateFormFromDoc(doc);
+              // generate and reveal the text/actions
+              const txt = rxTextFromDoc(doc);
+              document.getElementById('rxOutput').textContent = txt;
+              showRxActions(true);
+              setTab('rx');
+            } catch (err) {
+              console.error(err);
+              alert('Could not load.');
+            }
+          } else if (action === 'download') {
+            try {
+              const doc = await $.getJSON(`/api/forms/${id}`);
+              const txt = rxTextFromDoc(doc);
+              downloadPDF(txt);
+            } catch (err) {
+              console.error(err);
+              alert('Download failed.');
+            }
+          }
+        });
+      });
+    }
+
+    // ====== OPTIONAL: Prefill demo data ======
+    // window.onload = function () {
+    //   const form = document.forms['rxForm'];
+    //   form['patientName'].value = 'KATIE MAUGHAN';
+    //   form['dob'].value = '1985-07-22';
+    //   form['patientSex'].value = 'F';
+    //   form['patientAddress'].value = '568 N 540 E, SMITHFIELD, UT 84335';
+    //   form['patientPhoneNumber'].value = '4357576306';
+    //   form['doctorName'].value = 'Brian Carlson';
+    //   form['clinicAddress'].value = '412 N 200 E, Logan, UT 84321';
+    //   form['clinicPhoneNumber'].value = '4357132800';
+    //   form['npi'].value = '1760498687';
+    //   form['dea'].value = 'BC8435732';
+    //   form['drug'].value = 'Amoxicillin';
+    //   form['strength'].value = '500 mg';
+    //   form['route'].value = 'Oral';
+    //   form['form'].value = 'Tablet';
+    //   form['dateWritten'].value = new Date().toISOString().split('T')[0];
+    //   form['quantity'].value = '28';
+    //   form['refills'].value = '1';
+    //   form['daysSupply'].value = '5';
+    //   form['daw'].value = '0 No product selection indicated';
+    //   form['directions'].value = 'Take 1 tablet by mouth twice daily';
+    // };
+  </script>
+</body>
+</html>
