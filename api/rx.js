@@ -1,8 +1,9 @@
+// rx.js
 const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
 
-/** ---------- Schemas (relaxed) ---------- */
+/** ---------- Schemas (match your current app) ---------- */
 const patientSchema = new mongoose.Schema({
   name: { type: String, required: true },
   dob: { type: Date, required: true },
@@ -36,7 +37,10 @@ const prescriptionSchema = new mongoose.Schema({
 const rxFormSchema = new mongoose.Schema({
   patient: { type: patientSchema, required: true },
   doctor:  { type: doctorSchema, required: true },
-  prescription: { type: prescriptionSchema, required: true }
+  prescription: { type: prescriptionSchema, required: true },
+
+  // NEW: soft-delete flag
+  hidden: { type: Boolean, default: false }
 }, { timestamps: true });
 
 /** ---------- Model ---------- */
@@ -52,9 +56,12 @@ function parsePayload(req) {
 }
 
 /** ---------- Routes (CRUD) ---------- */
-router.get('/api/forms', async (_req, res) => {
+
+// List: exclude hidden by default; allow ?includeHidden=1 for “trash” view
+router.get('/api/forms', async (req, res) => {
   try {
-    const forms = await RxForm.find().sort({ createdAt: -1 });
+    const q = req.query.includeHidden === '1' ? {} : { hidden: false };
+    const forms = await RxForm.find(q).sort({ createdAt: -1 });
     res.json(forms);
   } catch (err) {
     console.error('Error fetching forms:', err);
@@ -62,6 +69,7 @@ router.get('/api/forms', async (_req, res) => {
   }
 });
 
+// Read one (even if hidden, so you can inspect/restORE)
 router.get('/api/forms/:id', async (req, res) => {
   try {
     const form = await RxForm.findById(req.params.id);
@@ -73,6 +81,7 @@ router.get('/api/forms/:id', async (req, res) => {
   }
 });
 
+// Create
 router.post('/api/forms', async (req, res) => {
   try {
     const payload = parsePayload(req);
@@ -85,6 +94,7 @@ router.post('/api/forms', async (req, res) => {
   }
 });
 
+// Update
 router.put('/api/forms/:id', async (req, res) => {
   try {
     const payload = parsePayload(req);
@@ -101,13 +111,65 @@ router.put('/api/forms/:id', async (req, res) => {
   }
 });
 
-router.delete('/api/forms/:id', async (req, res) => {
+/** ---------- Soft Delete (Hide) ---------- */
+
+// Preferred for environments that block the DELETE verb
+router.post('/api/forms/:id/delete', async (req, res) => {
   try {
-    const removed = await RxForm.findByIdAndDelete(req.params.id);
-    if (!removed) return res.status(404).json({ error: 'Form not found' });
+    const updated = await RxForm.findByIdAndUpdate(
+      req.params.id,
+      { hidden: true },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Form not found' });
     res.json({ ok: true });
   } catch (err) {
-    console.error('Error deleting form:', err);
+    console.error('Error hiding form:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Backward-compatible: if DELETE works on your host, also do a soft delete
+router.delete('/api/forms/:id', async (req, res) => {
+  try {
+    const updated = await RxForm.findByIdAndUpdate(
+      req.params.id,
+      { hidden: true },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Form not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error hiding form via DELETE:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/** ---------- Optional Admin / Utilities ---------- */
+
+// List only hidden (trash)
+router.get('/api/forms/hidden/list', async (_req, res) => {
+  try {
+    const forms = await RxForm.find({ hidden: true }).sort({ updatedAt: -1 });
+    res.json(forms);
+  } catch (err) {
+    console.error('Error listing hidden forms:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Restore from hidden
+router.post('/api/forms/:id/restore', async (req, res) => {
+  try {
+    const updated = await RxForm.findByIdAndUpdate(
+      req.params.id,
+      { hidden: false },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Form not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error restoring form:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

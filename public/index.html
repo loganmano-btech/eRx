@@ -459,6 +459,7 @@ Signed Date: ${(r.dateWritten||'').slice(0,10)}
     function renderSaved(items) {
       const cards = document.getElementById('saved-cards');
       const empty = document.getElementById('empty-state');
+
       cards.innerHTML = '';
       if (!items || items.length === 0) {
         empty.classList.remove('hidden');
@@ -471,7 +472,7 @@ Signed Date: ${(r.dateWritten||'').slice(0,10)}
         const drug = it?.prescription?.drug || '(No drug)';
         const strength = it?.prescription?.strength || '';
         const qty = (it?.prescription?.quantity ?? '');
-        const date = it?.prescription?.dateWritten?.slice?.(0,10) || '';
+        const date = it?.prescription?.dateWritten?.slice?.(0, 10) || '';
 
         const el = document.createElement('div');
         el.className = 'card-item';
@@ -490,46 +491,23 @@ Signed Date: ${(r.dateWritten||'').slice(0,10)}
         cards.appendChild(el);
       });
 
-      // wire actions
-      cards.querySelectorAll('.iconbtn').forEach(btn => {
+      // --- Wire the DELETE (soft-delete) buttons to use POST /api/forms/:id/delete ---
+      cards.querySelectorAll('.iconbtn[data-action="delete"]').forEach((btn) => {
         btn.addEventListener('click', async (e) => {
           const id = e.currentTarget.getAttribute('data-id');
-          const action = e.currentTarget.getAttribute('data-action');
-          if (action === 'delete') {
-            const ok = await confirmNicely('Delete this prescription? This cannot be undone.');
-            if (ok) {
-              try {
-                await $.ajax({ url: `/api/forms/${id}`, method: 'DELETE' });
-                loadSaved();
-                showToast('Deleted');
-              } catch (err) {
-                console.error(err);
-                showToast('Delete failed');
-              }
-            }
-          } else if (action === 'edit') {
-            try {
-              const doc = await $.getJSON(`/api/forms/${id}`);
-              // populate form, but saving will still create NEW
-              currentEditId = null;
-              populateFormFromDoc(doc);
-              const txt = rxTextFromDoc(doc);
-              document.getElementById('rxOutput').textContent = txt;
-              showRxActions(true);
-              setTab('rx');
-            } catch (err) {
-              console.error(err);
-              showToast('Could not load');
-            }
-          } else if (action === 'download') {
-            try {
-              const doc = await $.getJSON(`/api/forms/${id}`);
-              const txt = rxTextFromDoc(doc);
-              downloadPDF(txt);
-            } catch (err) {
-              console.error(err);
-              showToast('Download failed');
-            }
+          const ok = await confirmNicely('Hide this prescription? It will no longer appear in the list.');
+          if (!ok) return;
+
+          try {
+            await $.post(`/api/forms/${id}/delete`); // soft-delete route on server
+            showToast('Deleted'); 
+            const toast = document.getElementById('toast');
+            toast.style.background = 'red';
+            toast.style.color = 'white';
+            await loadSaved();   // refresh list
+          } catch (err) {
+            console.error(err);
+            showToast('Delete failed');
           }
         });
       });
@@ -542,11 +520,11 @@ Signed Date: ${(r.dateWritten||'').slice(0,10)}
       f['patientName'].value = 'KATIE MAUGHAN';
       f['dob'].value = '1985-07-22';
       f['patientSex'].value = 'F';
-      f['patientAddress'].value = '568 N 540 E\nSMITHFIELD, UT 843355504';
+      f['patientAddress'].value = '568 N 540 E SMITHFIELD, UT 843355504';
       f['patientPhoneNumber'].value = '4357576306';
       // doctor
       f['doctorName'].value = 'Brian Carlson';
-      f['clinicAddress'].value = '412 N 200 E\nLogan, UT 84321';
+      f['clinicAddress'].value = '412 N 200 E Logan, UT 84321';
       f['clinicPhoneNumber'].value = '4357132800';
       f['npi'].value = '1760498687';
       f['dea'].value = 'BC8435732';
