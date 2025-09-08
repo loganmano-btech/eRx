@@ -483,34 +483,62 @@ Signed Date: ${(r.dateWritten||'').slice(0,10)}
             <div class="date">${date}</div>
           </div>
           <div class="actions">
-            <button class="iconbtn" data-action="download" data-id="${it._id}">${ICONS.download} Download</button>
-            <button class="iconbtn" data-action="edit" data-id="${it._id}">${ICONS.edit} Edit</button>
-            <button class="iconbtn" data-action="delete" data-id="${it._id}">${ICONS.delete} Delete</button>
+            <button type="button" class="iconbtn" data-action="download" data-id="${it._id}">${ICONS.download} Download</button>
+            <button type="button" class="iconbtn" data-action="edit" data-id="${it._id}">${ICONS.edit} Edit</button>
+            <button type="button" class="iconbtn" data-action="delete" data-id="${it._id}">${ICONS.delete} Delete</button>
           </div>
         `;
         cards.appendChild(el);
       });
+// One listener for all card buttons (download/edit/delete).
+      cards.onclick = async (e) => {
+        const btn = e.target.closest('.iconbtn');
+        if (!btn) return;
 
-      // --- Wire the DELETE (soft-delete) buttons to use POST /api/forms/:id/delete ---
-      cards.querySelectorAll('.iconbtn[data-action="delete"]').forEach((btn) => {
-        btn.addEventListener('click', async (e) => {
-          const id = e.currentTarget.getAttribute('data-id');
+        const id = btn.getAttribute('data-id');
+        const action = btn.getAttribute('data-action');
+
+        if (action === 'delete') {
           const ok = await confirmNicely('Hide this prescription? It will no longer appear in the list.');
           if (!ok) return;
-
           try {
-            await $.post(`/api/forms/${id}/delete`); // soft-delete route on server
-            showToast('Deleted'); 
+            await $.post(`/api/forms/${id}/delete`);
+            showToast('Deleted');
             const toast = document.getElementById('toast');
             toast.style.background = 'red';
             toast.style.color = 'white';
-            await loadSaved();   // refresh list
+            await loadSaved();
           } catch (err) {
             console.error(err);
             showToast('Delete failed');
           }
-        });
-      });
+        }
+
+        if (action === 'edit') {
+          try {
+            const doc = await $.getJSON(`/api/forms/${id}`);
+            populateFormFromDoc(doc);                  // put values back into the left form
+            const txt = rxTextFromDoc(doc);            // build preview text
+            document.getElementById('rxOutput').textContent = txt;
+            showRxActions(true);                       // show Save / Download
+            setTab('rx');                              // jump back to Pharmacy View tab
+          } catch (err) {
+            console.error(err);
+            showToast('Could not load');
+          }
+        }
+
+        if (action === 'download') {
+          try {
+            const doc = await $.getJSON(`/api/forms/${id}`);
+            const txt = rxTextFromDoc(doc);
+            downloadPDF(txt);
+          } catch (err) {
+            console.error(err);
+            showToast('Download failed');
+          }
+        }
+      };
     }
 
     // ====== LOAD TEMPLATE BUTTON ======
